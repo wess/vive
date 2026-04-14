@@ -1,0 +1,103 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-arm64
+            runner: macos-latest
+            os: darwin
+            arch: arm64
+          - target: darwin-x86_64
+            runner: macos-13
+            os: darwin
+            arch: x86_64
+          - target: linux-x86_64
+            runner: ubuntu-latest
+            os: linux
+            arch: x86_64
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+            os: linux
+            arch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps (macOS)
+        if: matrix.os == 'darwin'
+        run: |
+          brew update
+          brew install cjson sqlite ncurses
+
+      - name: Install deps (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsqlite3-dev libcjson-dev libncurses-dev
+
+      - name: Install Goose
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/wess/goose/main/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: goose build --release
+
+      - name: Stage artifact
+        id: stage
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          VERSION="${VERSION#v}"
+          NAME="vive-${VERSION}-${{ matrix.target }}"
+          DIST="dist/${NAME}"
+          mkdir -p "${DIST}"
+          cp build/release/vive "${DIST}/vive"
+          cp README.md LICENSE "${DIST}/" 2>/dev/null || true
+          tar -C dist -czf "dist/${NAME}.tar.gz" "${NAME}"
+          (cd dist && shasum -a 256 "${NAME}.tar.gz" > "${NAME}.tar.gz.sha256")
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.stage.outputs.name }}
+          path: dist/*.tar.gz*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
+          generate_release_notes: true

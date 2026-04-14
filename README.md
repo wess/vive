@@ -15,27 +15,37 @@ Vive sits between AI clients and model providers as invisible infrastructure. On
 
 ## Quick Start
 
-### Prerequisites
-
-- C compiler (cc/gcc/clang)
-- [Goose](https://github.com/wess/goose) build system
-- SQLite3, cJSON, ncurses (via Homebrew: `brew install cjson`)
-
-### Build and Set Up
+### Install (macOS and Linux)
 
 ```sh
-goose build
-./build/debug/vive init
+curl -fsSL https://raw.githubusercontent.com/wess/vive/main/install.sh | sh
+vive init
 ```
 
-That's it. Restart Claude Code and Vive is active — auto-memory, auto-context, all 17 MCP tools available.
-
-### Install System-Wide
+Install and configure Claude Code in one shot:
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/wess/vive/main/install.sh | sh -s -- --setup
+```
+
+Options: `--version vX.Y.Z`, `--prefix /path`, `--no-deps`. Run with `--help` for details.
+
+### Homebrew
+
+```sh
+brew install wess/tap/vive
+vive init
+```
+
+### Build From Source
+
+Requires a C compiler, [Goose](https://github.com/wess/goose), and `sqlite3` + `cjson` + `ncurses`:
+
+```sh
+goose build           # ./build/debug/vive
 goose build --release
 goose install
-vive init --global  # enable for all projects
+vive init --global    # enable for all projects
 ```
 
 ## How It Works
