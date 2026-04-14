@@ -1,0 +1,12 @@
+project:
+  name: "vive"
+  version: "0.1.0"
+  description: "Smart harness server for AI agent orchestration"
+
+build:
+  cc: "cc"
+  cflags: "-Wall -Wextra -std=c11 -I/opt/homebrew/include"
+  ldflags: "-L/opt/homebrew/lib -lsqlite3 -lcjson -lncurses -lpthread"
+  includes:
+    - "include"
+    - "src"
